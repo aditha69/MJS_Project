@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies (CI)
         run: composer install --no-interaction --prefer-dist
 
-      - name: Run tests
+      - name: Run tests (optional)
         run: php artisan test || true
 
 
@@ -37,14 +37,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_KEY }}
-          name: id_rsa
-          known_hosts: unnecessary
-          if_key_exists: replace
+      # ===============================
+      # SETUP SSH (FIX HOST KEY ERROR)
+      # ===============================
+      - name: Setup SSH key & known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p 2121 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      # ===============================
+      # DEPLOY FILES VIA RSYNC
+      # ===============================
       - name: Deploy files with rsync
         run: |
           rsync -az --delete \
@@ -56,10 +61,13 @@ jobs:
             ./ \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
 
+      # ===============================
+      # RUN LARAVEL COMMANDS ON SERVER
+      # ===============================
       - name: Run Laravel commands on server
         run: |
           ssh -p 2121 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            cd "${{ secrets.DEPLOY_PATH }}"
+            cd ${{ secrets.DEPLOY_PATH }}
 
             composer install --no-dev --no-interaction --optimize-autoloader
 
