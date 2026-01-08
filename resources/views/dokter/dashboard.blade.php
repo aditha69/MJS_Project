@@ -5,7 +5,8 @@
 @section('content')
 
 <h1>Dashboard Dokter</h1>
-<h3>{{ $dokter->nama }} - {{ $dokter->spesialis }}</h3>
+<h2>{{ $dokter->nama }}</h2>
+<h3>{{ $dokter->spesialis }}</h3>
 
 <table class="table">
     <tr>
