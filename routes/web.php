@@ -15,6 +15,10 @@ use App\Http\Controllers\PasienController;
 |--------------------------------------------------------------------------
 */
 
+Route::get('/', function () {
+    return redirect('/pasien/login');
+});
+
 Route::get('/pasien/antrian/realtime', [AntrianController::class, 'realtime']);
 
 // Login & Register
