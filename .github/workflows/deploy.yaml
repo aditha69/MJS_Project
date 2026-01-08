@@ -32,5 +32,3 @@ jobs:
             else
               git pull origin main
             fi
-
-            echo "✅ Deploy finished"
