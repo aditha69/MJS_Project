@@ -3,7 +3,7 @@ name: Deploy to Nginx
 on:
   push:
     branches:
-      - main   # ganti ke main jika perlu
+      - main   
 
 jobs:
   deploy:
@@ -21,14 +21,31 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 2121
           script: |
-            sudo mkdir -p /var/www/udinmjs
-            sudo chown -R $USER:www-data /var/www/udinmjs
-            sudo chmod -R 755 /var/www/udinmjs
+            set -e
 
-            cd /var/www/udinmjs
+            echo"== Pindah ke /var/www =="
+            cd /var/www
 
-            if [ ! -d ".git" ]; then
-              git clone https://github.com/aditha69/MJS_Project .
-            else
-              git pull origin main
-            fi
+            echo"== Hapus folder sementara =="
+            sudo rm -rf udinmjs_tmp
+
+            echo"== Clone repo ke folder sementara =="
+            sudo git clone https://github.com/aditha69/MJS_Project udinmjs_tmp
+
+            echo"== Kosongkan folder web =="
+            sudo rm -rf udinmjs/*
+
+            echo"== Pindahkan hasil deploy =="
+            sudo cp -r udinmjs_temp/* udinmjs/
+    
+            echo"== Set permission =="
+            sudo chown -R www-data:www-data udinmjs
+            sudo chmod -R 755 udinmjs
+
+            echo"== Bersihkan =="
+            sudo rm -rf udinmjs
+            
+            echo"== Reload Nginx =="
+            sudo systemctl reload nginx
+            
+            echo"== Deploy Selesai =="
