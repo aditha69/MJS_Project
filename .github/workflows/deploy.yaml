@@ -1,4 +1,4 @@
-name: CI/CD Deploy to Debian
+name: CI/CD Deploy Laravel to Debian
 
 on:
   push:
@@ -14,13 +14,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build step (optional)
-        run: |
-          echo "No build process required"
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run test
+        run: php artisan test || true
 
 
   deploy:
-    name: Deploy (CD)
+    name: Deploy (CD Part)
     needs: build-test
     runs-on: ubuntu-latest
 
@@ -32,19 +39,16 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
+          known_hosts: unnecessary
           if_key_exists: replace
 
-      - name: Setup Known Hosts
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -p 2121 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+      - name: Add SSH Known Hosts
+        run: ssh-keyscan -p 2121 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy files with rsync
+      - name: Deploy with rsync
         run: |
           rsync -avz --delete \
-          -e "ssh -p 2121 -o StrictHostKeyChecking=no" \
+          -e "ssh -p 2121" \
           --exclude=".git" \
           --exclude=".github" \
           --exclude="node_modules" \
@@ -52,9 +56,18 @@ jobs:
           ./ \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
 
-      - name: Post-deploy command (optional)
+      - name: Run Laravel Commands on Server
         run: |
-          ssh -p 2121 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -p 2121 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.DEPLOY_PATH }}
-            echo "Deploy selesai di server"
+
+            composer install --no-dev --no-interaction --optimize-autoloader
+
+            php artisan migrate --force
+
+            php artisan config:clear
+            php artisan config:cache
+            php artisan route:cache
+
+            chmod -R 775 storage bootstrap/cache
           EOF
