@@ -65,5 +65,5 @@ Route::get('/dokter/logout', function () {
 
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/pasien/login');
 });
