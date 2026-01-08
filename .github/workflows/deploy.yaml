@@ -45,7 +45,7 @@ jobs:
         run: mkdir -p ~/.ssh
 
       - name: Adding Known Hosts
-        run: ssh-keyscan -p 22 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        run: ssh-keyscan -p 2121 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy with rsync
         run: |
