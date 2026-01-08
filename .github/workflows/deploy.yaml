@@ -3,7 +3,7 @@ name: CI/CD Deploy Laravel to Debian
 on:
   push:
     branches:
-      - main   
+      - main
 
 jobs:
   build-test:
@@ -19,7 +19,7 @@ jobs:
         with:
           php-version: '8.2'
 
-      - name: Install dependencies
+      - name: Install dependencies (CI)
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Run test
@@ -27,7 +27,7 @@ jobs:
 
 
   deploy:
-    name: Deploy (CD Part)
+    name: Deploy (CD)
     needs: build-test
     runs-on: ubuntu-latest
 
@@ -35,20 +35,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install SSH Key
+      - name: Setup SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
-          known_hosts: unnecessary
           if_key_exists: replace
 
-      - name: Add SSH Known Hosts
-        run: ssh-keyscan -p 2121 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      - name: Setup Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p 2121 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
-      - name: Deploy with rsync
+      - name: Deploy files with rsync
         run: |
           rsync -avz --delete \
-          -e "ssh -p 2121" \
+          -e "ssh -p 2121 -o StrictHostKeyChecking=no" \
           --exclude=".git" \
           --exclude=".github" \
           --exclude="node_modules" \
@@ -58,7 +61,8 @@ jobs:
 
       - name: Run Laravel Commands on Server
         run: |
-          ssh -p 2121 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -p 2121 -o StrictHostKeyChecking=no \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.DEPLOY_PATH }}
 
             composer install --no-dev --no-interaction --optimize-autoloader
@@ -70,4 +74,6 @@ jobs:
             php artisan route:cache
 
             chmod -R 775 storage bootstrap/cache
+
+            echo "DEPLOY SUCCESS"
           EOF
