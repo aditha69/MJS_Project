@@ -4,7 +4,7 @@
 @section('content')
 <div class="container">
     <div class="card">
-        <h1>Login Akuuuuu</h1>
+        <h1>Login Akuuuu</h1>
 
         @if(session('error'))
             <p style="color:red; text-align:center">{{ session('error') }}</p>
