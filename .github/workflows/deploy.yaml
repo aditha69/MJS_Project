@@ -12,57 +12,51 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: mbstring, bcmath, pdo_mysql
+          coverage: none
 
       - name: Install dependencies (CI)
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Run test
+      - name: Run tests
         run: php artisan test || true
 
-
   deploy:
-    name: Deploy (CD)
+    name: Deploy to VM
     needs: build-test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
-          if_key_exists: replace
+          name: id_rsa
+          known_hosts: unnecessary
 
-      - name: Setup Known Hosts
+      - name: Deploy files using rsync
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -p 2121 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
-      - name: Deploy files with rsync
-        run: |
-          rsync -avz --delete \
-          -e "ssh -p 2121 -o StrictHostKeyChecking=no" \
+          rsync -az --delete \
           --exclude=".git" \
           --exclude=".github" \
           --exclude="node_modules" \
           --exclude=".env" \
+          -e "ssh -p 2121" \
           ./ \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
 
-      - name: Run Laravel Commands on Server
+      - name: Run Laravel commands on server
         run: |
-          ssh -p 2121 -o StrictHostKeyChecking=no \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -p 2121 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.DEPLOY_PATH }}
 
             composer install --no-dev --no-interaction --optimize-autoloader
@@ -77,3 +71,4 @@ jobs:
 
             echo "DEPLOY SUCCESS"
           EOF
+          
