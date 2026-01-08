@@ -1,4 +1,4 @@
-name: Deploy to Nginx
+name: CI/CD Deploy Laravel to Debian
 
 on:
   push:
@@ -6,46 +6,65 @@ on:
       - main   
 
 jobs:
-  deploy:
+  build-test:
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Deploy to Debian Server
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          php-version: '8.2'
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run test
+        run: php artisan test || true
+
+  deploy:
+    name: Deploy (CD Part)
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
           key: ${{ secrets.SSH_KEY }}
-          port: 2121
-          script: |
-            set -e
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+          if_key_exists: replace
 
-            echo"== Pindah ke /var/www =="
-            cd /var/www
+      - name: Create dir if not exists
+        run: mkdir -p ~/.ssh
 
-            echo"== Hapus folder sementara =="
-            sudo rm -rf udinmjs_tmp
+      - name: Adding Known Hosts
+        run: ssh-keyscan -p 22 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-            echo"== Clone repo ke folder sementara =="
-            sudo git clone https://github.com/aditha69/MJS_Project udinmjs_tmp
+      - name: Deploy with rsync
+        run: |
+          rsync -avz --delete \
+          --exclude=".git" \
+          --exclude=".github" \
+          --exclude="node_modules" \
+          --exclude=".env" \
+          ./ \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
 
-            echo"== Kosongkan folder web =="
-            sudo rm -rf udinmjs/*
-
-            echo"== Pindahkan hasil deploy =="
-            sudo cp -r udinmjs_temp/* udinmjs/
-    
-            echo"== Set permission =="
-            sudo chown -R www-data:www-data udinmjs
-            sudo chmod -R 755 udinmjs
-
-            echo"== Bersihkan =="
-            sudo rm -rf udinmjs
-            
-            echo"== Reload Nginx =="
-            sudo systemctl reload nginx
-            
-            echo"== Deploy Selesai =="
+      - name: Run Laravel Commands
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ secrets.DEPLOY_PATH }}
+            composer install --no-dev --optimize-autoloader
+            php artisan key:generate --force || true
+            php artisan migrate --force
+            php artisan config:clear
+            php artisan config:cache
+            php artisan route:cache
+          EOF
