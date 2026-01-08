@@ -1,4 +1,4 @@
-name: CI/CD Deploy Laravel to Debian
+name: CI/CD Deploy Laravel to Debian VM
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
 
 jobs:
   build-test:
-    name: Build & Test
+    name: Build & Test (CI)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup PHP
@@ -27,13 +27,14 @@ jobs:
       - name: Run tests
         run: php artisan test || true
 
+
   deploy:
-    name: Deploy to VM
+    name: Deploy to Debian VM (CD)
     needs: build-test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup SSH Key
@@ -42,8 +43,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           name: id_rsa
           known_hosts: unnecessary
+          if_key_exists: replace
 
-      - name: Deploy files using rsync
+      - name: Deploy files with rsync
         run: |
           rsync -az --delete \
           --exclude=".git" \
@@ -71,4 +73,3 @@ jobs:
 
             echo "DEPLOY SUCCESS"
           EOF
-          
