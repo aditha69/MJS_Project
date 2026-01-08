@@ -1,9 +1,9 @@
-name: CI/CD Deploy Laravel to Debian
+name: CI/CD Deploy to Debian
 
 on:
   push:
     branches:
-      - main
+      - main   
 
 jobs:
   build-test:
@@ -14,16 +14,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Run test
-        run: php artisan test || true
+      - name: Build step (optional)
+        run: |
+          echo "No build process required"
 
 
   deploy:
@@ -35,7 +28,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup SSH Key
+      - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
@@ -59,18 +52,9 @@ jobs:
           ./ \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
 
-      - name: Run Laravel Commands on Server
+      - name: Post-deploy command (optional)
         run: |
           ssh -p 2121 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.DEPLOY_PATH }}
-
-            composer install --no-dev --no-interaction --optimize-autoloader
-
-            php artisan migrate --force
-
-            php artisan config:clear
-            php artisan config:cache
-            php artisan route:cache
-
-            chmod -R 775 storage bootstrap/cache
+            echo "Deploy selesai di server"
           EOF
