@@ -29,7 +29,14 @@
             </div>
 
             <button type="submit">Ambil Antrian</button>
+            <div>
+            </div>
         </form>
-    </div>
+         <div>
+            <a href="/pasien/login" class="logout"
+             onclick="return confirm('Yakin logout?')">
+            Keluar
+            </a>
+        </div>
 </div>
 @endsection

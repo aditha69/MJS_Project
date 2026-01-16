@@ -109,6 +109,7 @@ button:hover {
     text-align: center;
 }
 
+
 .nomor-antrian {
     font-size: 64px;
     font-weight: bold;
@@ -122,6 +123,38 @@ button:hover {
     border-radius: 20px;
     font-size: 14px;
     font-weight: bold;
+}
+/* Reset margin dan padding body supaya tidak nempel ke tepi */
+body {
+    margin: 20px;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5; /* opsional, biar tombol terlihat */
+}
+
+/* Style tombol logout */
+.logout {
+    display: block;              
+    width: 100%;                 
+    max-width: 200px;            
+    margin: 10px auto;           
+    padding: 12px 0;             /* tinggi tombol & spasi teks vertikal */
+    text-align: center;          /* teks horizontal di tengah */
+    text-decoration: none;       /* hilangkan underline */
+    background-color: #0f3d2e;   /* warna tombol */
+    color: white;                /* warna teks */
+    font-size: 14px;             /* ukuran font */
+    font-weight: bold;           /* teks lebih tegas */
+    border: 1px solid black;     /* bo
+    border-radius: 5px;          
+    box-sizing: border-box;      
+    transition: background 0.3s; 
+}
+
+/* Efek hover tombol */
+.logout:hover {
+    background-color: var(--green);
+    cursor: pointer;
 }
 
 .status-menunggu {
