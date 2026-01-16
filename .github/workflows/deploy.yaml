@@ -21,7 +21,7 @@ jobs:
           extensions: mbstring, bcmath, pdo_mysql
           coverage: none
 
-      - name: Install dependencies (CI)
+      - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
       - name: Run tests (optional)
@@ -38,9 +38,9 @@ jobs:
         uses: actions/checkout@v4
 
       # ===============================
-      # SETUP SSH (FIX HOST KEY ERROR)
+      # SETUP SSH (NO HOST KEY ERROR)
       # ===============================
-      - name: Setup SSH key & known_hosts
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
@@ -48,36 +48,39 @@ jobs:
           ssh-keyscan -p 2121 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       # ===============================
-      # DEPLOY FILES VIA RSYNC
+      # RSYNC DEPLOY (NO PERMISSION ERROR)
       # ===============================
       - name: Deploy files with rsync
         run: |
           rsync -az --delete \
+            --no-times \
             --exclude=".git" \
             --exclude=".github" \
             --exclude="node_modules" \
             --exclude=".env" \
+            --exclude="storage" \
             -e "ssh -p 2121" \
             ./ \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
 
       # ===============================
-      # RUN LARAVEL COMMANDS ON SERVER
+      # SERVER COMMANDS (FINAL FIX)
       # ===============================
       - name: Run Laravel commands on server
         run: |
           ssh -p 2121 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.DEPLOY_PATH }}
 
+            sudo mkdir -p storage bootstrap/cache
+            sudo chown -R $USER:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
+
             composer install --no-dev --no-interaction --optimize-autoloader
 
             php artisan migrate --force
-
-            php artisan config:clear
+            php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
-
-            chmod -R 775 storage bootstrap/cache
 
             echo "DEPLOY SUCCESS"
           EOF
